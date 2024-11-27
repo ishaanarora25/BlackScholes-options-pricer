@@ -1,5 +1,6 @@
 import streamlit as st
 from bspricer.pricer import BlackScholesPricer as bsp
+from datetime import datetime
 
 st.title("Black-Scholes Options Pricer")
 
@@ -30,12 +31,15 @@ with st.container():
         exercise_price = st.number_input("Exercise Price (K)", min_value=0.0, value=100.0, step=0.01)
     with col2:
         volatility = st.number_input("Volatility (σ)", min_value=0.0, max_value=1.0, value=0.2, step=0.01)
-        time_to_maturity = st.number_input("Time to Maturity (T, in years)", min_value=0.0, value=1.0, step=0.1)
+        expiration_date = st.date_input("Expiration Date")
     with col3:
         risk_free_rate = st.number_input("Risk-Free Rate (r)", min_value=0.0, max_value=1.0, value=0.05, step=0.01)
 
 # Add a "Calculate" button
 if st.button("Calculate"):
+
+    current_date = datetime.now().date()
+    time_to_maturity = ((expiration_date - current_date).days) / 365.0
 
     option = bsp(stock_price=stock_price, exercise_price=exercise_price, risk_free_rate=risk_free_rate, volatility=volatility, time_to_maturity=time_to_maturity)
     call_price = bsp.get_call_price(option)
