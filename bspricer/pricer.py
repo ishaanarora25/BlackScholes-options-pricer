@@ -6,6 +6,7 @@ class BlackScholesPricer:
         '''
         Initializes necessary variables for the Black-Scholes Pricing Model
 
+        Params
         stock_price: current stock price of the underlying asset
         exercise_price: exercise price of the option contract
         risk_free_rate: return on risk-free assets
