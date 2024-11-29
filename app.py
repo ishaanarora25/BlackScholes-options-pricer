@@ -2,6 +2,8 @@ import streamlit as st
 from bspricer.pricer import BlackScholesPricer as bsp
 from bspricer.history import history, InvalidTicker
 from datetime import datetime, timedelta
+from streamlit_echarts import st_echarts
+import numpy as np
 
 st.title("Black-Scholes Options Pricer")
 
@@ -49,6 +51,19 @@ def clear_ticker_on_price_change():
     st.session_state.stock_ticker = ""
     st.session_state.error_message = ""
 
+def calculate_historical_option_prices(price_list, exercise_price, risk_free_rate, volatility, time_to_maturity):
+    '''
+    Calculate and return a list of call and put option prices of a given stock over the last month
+    '''
+    call_prices, put_prices = [], []
+    for price in price_list:
+        option = bsp(price, exercise_price=exercise_price, risk_free_rate=risk_free_rate, volatility=volatility, time_to_maturity=time_to_maturity)
+        call_prices.append(bsp.get_call_price(option))
+        put_prices.append(bsp.get_put_price(option))
+    return call_prices, put_prices
+
+
+
 current_date = datetime.now().date()
 
 with st.container():
@@ -63,6 +78,7 @@ with st.container():
     with col2:
         stock_price = st.number_input("Stock Price (S)", min_value=0.0, value=st.session_state.stock_price, on_change=clear_ticker_on_price_change, step=0.01)
         expiration_date = st.date_input("Expiration Date", min_value=current_date + timedelta(days=1))
+        time_to_maturity = ((expiration_date - current_date).days) / 365.0
     with col3:
         volatility = st.number_input("Volatility (σ)", min_value=0.0, max_value=1.0, value=0.2, step=0.01)
         risk_free_rate = st.number_input("Risk-Free Rate (r)", min_value=0.0, max_value=1.0, value=0.05, step=0.01)
@@ -70,7 +86,6 @@ with st.container():
 # Add a "Calculate" button
 if st.button("Calculate"):
     
-    time_to_maturity = ((expiration_date - current_date).days) / 365.0
 
     option = bsp(stock_price=stock_price, exercise_price=exercise_price, risk_free_rate=risk_free_rate, volatility=volatility, time_to_maturity=time_to_maturity)
     call_price = bsp.get_call_price(option)
@@ -84,3 +99,77 @@ if st.button("Calculate"):
             st.metric(label="Call Option Value", value="${:,.2f}".format(call_price))
         with col2:
             st.metric(label="Put Option Value", value="${:,.2f}".format(put_price))
+
+with st.expander("Option Price History Plot (1mo)", expanded=False):
+    if (st.session_state.error_message != "" or st.session_state.stock_ticker == ""):
+        st.error("Please enter valid ticker for this feature")
+    else:
+        
+        historical_data = history.get_price_history(st.session_state.stock_ticker)
+        dates = historical_data.index.strftime('%Y-%m-%d').tolist()
+        historical_prices = historical_data["Close"].tolist()
+        call_prices, put_prices = calculate_historical_option_prices(historical_prices, exercise_price, risk_free_rate, volatility, time_to_maturity)
+
+        call_plot_option = {
+            "title": {
+              "text": "Call Option History"  
+            },
+            "xAxis": {
+                "type": "category",
+                "data": dates,
+                "name": "Date"
+            },
+            "yAxis": {
+                "type": "value",
+                "name": "Price (USD)",
+                "min": max(0, np.floor(min(call_prices)) - 1),
+            },
+            "series": [
+                {
+                    "name": "Closing Price",
+                    "data": call_prices, 
+                    "type": "line",
+                    "smooth": True,
+                }
+            ],
+        }
+        st_echarts(
+            options=call_plot_option, height="400px", width="600px"
+        )
+
+        put_plot_option = {
+            "title": {
+              "text": "Put Option History"  
+            },
+            "xAxis": {
+                "type": "category",
+                "data": dates,
+                "name": "Date"
+            },
+            "yAxis": {
+                "type": "value",
+                "name": "Price (USD)",
+                "min": max(0, np.floor(min(put_prices)) - 1),
+            },
+            "series": [
+                {
+                    "name": "Closing Price",
+                    "data": put_prices, 
+                    "type": "line",
+                    "smooth": True,
+                }
+            ],
+        }
+        st_echarts(
+            options=put_plot_option, height="400px", width="600px"
+        )
+
+        st.markdown(
+        """
+        <div style="text-align: center; font-size: 10px; margin-top: 20px;">
+            *Purpose: To visualize how Call and Put options of a given stock have changed in relation to its price over the last month (all other factors held constant).*
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
