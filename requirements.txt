@@ -12,7 +12,7 @@ peewee==3.17.8
 prettytable==3.12.0
 protobuf==4.25.3
 pyecharts==2.0.7
-python=3.9.20
+python==3.9.20
 python-dateutil==2.9.0post0
 requests==2.32.3
 scipy==1.12.0
